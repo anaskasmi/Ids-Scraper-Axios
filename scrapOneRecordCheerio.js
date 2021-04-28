@@ -18,17 +18,18 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
     let res = null;
 
     try {
+        console.log('try 1 :', websiteUrl, error1.response.status)
         res = await instance.get(websiteUrl)
     } catch (error1) {
+        console.log('try 1 FAILED :', websiteUrl)
         let websiteUrlHttps = websiteUrl.replace('http', 'https')
-        if (error1 && error1.response && error1.response.status) {
-            console.log('try 1 :', websiteUrl, error1.response.status)
-        }
+        if (error1 && error1.response && error1.response.status) {}
         try {
+            console.log('try 2 : ', websiteUrl, error2.response.status)
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
+            console.log('try 2 FAILED : ', websiteUrl)
             if (error2 && error2.response && error2.response.status) {
-                console.log('try 2 : ', websiteUrl, error2.response.status)
                 if (error1 && error1.response && error1.response.status > 200 &&
                     error2.response.status > 200) {
                     let recordsToUpdate = await WebsiteRecord.find({
