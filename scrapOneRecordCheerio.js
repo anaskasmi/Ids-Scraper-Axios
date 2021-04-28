@@ -1,12 +1,39 @@
 const axios = require('axios');
 const WebsiteRecord = require('./models/WebsiteRecord');
 const https = require('https')
-
+const util = require('util');
+const urlExists = util.promisify(require('url-exists'));
 
 
 exports.scrapOneRecordCheerio = async function(websiteUrl) {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    let res = null;
+    let websiteUrlHttps = websiteUrl.replace('http', 'https')
+
+    //check websites availibilty
+    console.log('checking ', websiteUrl)
+    let websiteHttpAvailable = await urlExists(websiteUrl);
+    let websiteHttpsAvailable = await urlExists(websiteUrlHttps);
+    console.log(websiteUrl, websiteHttpAvailable)
+    console.log(websiteUrlHttps, websiteHttpsAvailable)
+    if (!websiteHttpsAvailable && !websiteHttpAvailable) {
+        console.log(websiteUrl, 'Not Available ')
+        let recordsToUpdate = await WebsiteRecord.find({
+            url: websiteUrl,
+        });
+
+        for (const recordToUpdate of recordsToUpdate) {
+            recordToUpdate.status = "failed";
+            recordToUpdate.cause = "unreachable";
+            recordToUpdate.scrapedUsingCheerio = true;
+            await recordToUpdate.save();
+        }
+
+        console.log(websiteUrl, 'Not Available')
+        return;
+    }
+    //instanciate axios 
     const instance = axios.create({
         httpsAgent: new https.Agent({
             rejectUnauthorized: false
@@ -14,69 +41,30 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
     });
 
 
-    // axios.defaults.timeout = 13000;
-    let res = null;
-
     try {
-        console.log('try 1 :', websiteUrl)
+        console.log('trying http :', websiteUrl)
         res = await instance.get(websiteUrl)
     } catch (error1) {
-        console.log('try 1 FAILED :', websiteUrl)
-        let websiteUrlHttps = websiteUrl.replace('http', 'https')
-        if (error1 && error1.response && error1.response.status) {}
+        console.log('trying http FAILED :', websiteUrl)
         try {
-            console.log('try 2 : ', websiteUrl)
+            console.log('trying https : ', websiteUrlHttps)
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
-            console.log('try 2 FAILED : ', websiteUrl)
-            if (error2 && error2.response && error2.response.status) {
-                if (error1 && error1.response && error1.response.status > 200 &&
-                    error2.response.status > 200) {
-                    let recordsToUpdate = await WebsiteRecord.find({
-                        url: websiteUrl,
-                    });
-
-                    for (const recordToUpdate of recordsToUpdate) {
-                        recordToUpdate.status = "failed";
-                        recordToUpdate.scrapedUsingCheerio = true;
-                        await recordToUpdate.save();
-                    }
-
-                    console.log(websiteUrl, 'Not Available')
-                    return;
-                }
-            }
+            console.log('trying https FAILED : ', websiteUrlHttps)
         }
     }
+    //if website exist but has no data
     if (!res || (res && !res.data)) {
-        console.log(websiteUrl + '  no response')
+        console.log(websiteUrl + '  RESPONSE HAS NO DATA')
         return;
     }
+
+    //set the data to html 
     let html = res.data;
     let licenseId = null;
 
-    //external js 
-    if (!licenseId) {
-        let regex = /src="https:\/\/connect\.livechatinc\.com\/api.*"/;
-        let src = regex.exec(html);
-        if (src) {
-            src = src[0]
-            src = src.replace(`src="`, "");
-            src = src.replace(`"`, "");
-            externelJs = await instance.get(src)
 
-            let externalJsRegex = /_lc.license(\s*)=(\s*)[0-9]*[,;]/;
-            let externalJsMatched = externalJsRegex.exec(externelJs);
-            if (externalJsMatched) {
-                externalJsMatched = externalJsMatched[0]
-                console.log(websiteUrl + ' id found using external js ')
-                console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                console.log(externalJsMatched.replace(/\D/g, ""));
-                console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                    // licenseId = externalJsMatched.replace(/\D/g, "");
-            }
-        }
-    }
+
     //meta tag 
     if (!licenseId) {
         let regex = /(\s*)<meta name="livechat_id"(\s*)content="[0-9]+"/;
@@ -85,8 +73,10 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             console.log(matched)
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log(websiteUrl + '  id found using href')
-            console.log(licenseId);
+            console.log('-----------------------------------')
+            console.log(websiteUrl + '  id found using href', licenseId)
+            console.log('-----------------------------------')
+
         }
     }
 
@@ -97,8 +87,10 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log(websiteUrl + '   id found in link')
-            console.log(licenseId);
+            console.log('-----------------------------------')
+            console.log(websiteUrl + '   id found in link', licenseId)
+            console.log('-----------------------------------')
+
         }
     }
 
@@ -109,11 +101,41 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log(websiteUrl + '   id found using _lc.license')
-            console.log(licenseId);
+            console.log('-----------------------------------')
+            console.log(websiteUrl + '   id found using _lc.license', licenseId)
+            console.log('-----------------------------------')
+
         }
     }
 
+    //external js 
+    if (!licenseId) {
+        let regex = /src="https:\/\/connect\.livechatinc\.com\/api([^"]+)"/;
+        let src = regex.exec(html);
+        if (src) {
+            src = src[0]
+            src = src.replace(`src="`, "");
+            src = src.replace(`"`, "");
+            try {
+                externelJs = await instance.get(src)
+                externelJs = externelJs.data;
+                let externalJsRegex = /_lc.license(\s*)=(\s*)[0-9]*[,;]/;
+                let externalJsMatched = externalJsRegex.exec(externelJs);
+                if (externalJsMatched) {
+                    externalJsMatched = externalJsMatched[0]
+                    licenseId = externalJsMatched.replace(/\D/g, "")
+                    console.log('-----------------------------------')
+                    console.log(websiteUrl + ' id found using external js ', licenseId)
+                    console.log('-----------------------------------')
+
+                }
+            } catch (error) {
+
+                console.log(error, websiteUrl)
+            }
+
+        }
+    }
 
 
 

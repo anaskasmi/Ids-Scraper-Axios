@@ -6,6 +6,7 @@ const WebsiteRecord = mongoose.Schema({
     licenseId: { type: String },
     status: { type: String, default: 'notDone' },
     scrapedUsingCheerio: { type: Boolean, default: false },
+    cause: { type: String, default: null }
 
 });
 

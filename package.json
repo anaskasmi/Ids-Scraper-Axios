@@ -10,7 +10,10 @@
         "axios": "^0.21.1",
         "dotenv": "^8.2.0",
         "mongoose": "^5.12.1",
-        "queue": "^6.0.2"
+        "queue": "^6.0.2",
+        "url-exist": "^3.0.0",
+        "url-exist-sync": "^1.0.2",
+        "url-exists": "^1.0.3"
     },
     "keywords": [],
     "author": "",
