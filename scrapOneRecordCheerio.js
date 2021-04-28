@@ -18,26 +18,36 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
     let res = null;
 
     try {
-        res = await instance.get(websiteUrl, { httpsAgent })
-    } catch (error) {
+        res = await instance.get(websiteUrl)
+    } catch (error1) {
         let websiteUrlHttps = websiteUrl.replace('http', 'https')
+        if (error1 && error1.response && error1.response.status) {
+            console.log('try 1 :', websiteUrl, error1.response.status)
+        }
         try {
-            console.log(websiteUrlHttps + '  second try..')
             res = await instance.get(websiteUrlHttps)
-        } catch (error) {
-            console.log(websiteUrlHttps + '   second try failed ')
-            console.log(websiteUrlHttps + '   third try')
-            let websiteUrlWithoutHttps = websiteUrl.replace('http://', '')
-            try {
-                console.log(websiteUrlWithoutHttps + '  third try..')
-                res = await instance.get(websiteUrlWithoutHttps)
-            } catch (error) {
-                console.log(websiteUrlWithoutHttps + '   third try failed ')
-                return;
+        } catch (error2) {
+            if (error2 && error1.response && error1.response.status) {
+                console.log('try 2 : ', websiteUrl, error2.response.status)
+                if (error1 && error1.response && error1.response.status > 200 &&
+                    error2.response.status > 200) {
+                    let recordsToUpdate = await WebsiteRecord.find({
+                        url: websiteUrl,
+                    });
+
+                    for (const recordToUpdate of recordsToUpdate) {
+                        recordToUpdate.status = "failed";
+                        recordToUpdate.scrapedUsingCheerio = true;
+                        await recordToUpdate.save();
+                    }
+
+                    console.log(websiteUrl, 'Not Available')
+                    return;
+                }
             }
         }
     }
-    if (!res && !res.data) {
+    if (!res || (res && !res.data)) {
         console.log(websiteUrl + '  no response')
         return;
     }
@@ -52,7 +62,16 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             src = src[0]
             src = src.replace(`src="`, "");
             src = src.replace(`"`, "");
-            console.log(src + '   src')
+            externelJs = await instance.get(src)
+
+            let externalJsRegex = /_lc.license(\s*)=(\s*)[0-9]*[,;]/;
+            let externalJsMatched = externalJsRegex.exec(externelJs);
+            if (externalJsMatched) {
+                externalJsMatched = externalJsMatched[0]
+                console.log(websiteUrl + ' id found using external js ')
+                console.log(externalJsMatched.replace(/\D/g, ""));
+                // licenseId = externalJsMatched.replace(/\D/g, "");
+            }
         }
     }
     //meta tag 
@@ -104,7 +123,6 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
                 recordToUpdate.licenseId = licenseId;
                 recordToUpdate.status = 'done';
                 recordToUpdate.scrapedUsingCheerio = true;
-
                 await recordToUpdate.save();
             }
         }
