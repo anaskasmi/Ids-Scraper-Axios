@@ -27,7 +27,7 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         try {
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
-            if (error2 && error1.response && error1.response.status) {
+            if (error2 && error2.response && error2.response.status) {
                 console.log('try 2 : ', websiteUrl, error2.response.status)
                 if (error1 && error1.response && error1.response.status > 200 &&
                     error2.response.status > 200) {
