@@ -51,6 +51,17 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
             console.log('trying https FAILED : ', websiteUrlHttps)
+
+            let recordsToUpdate = await WebsiteRecord.find({
+                url: websiteUrl,
+            });
+
+            for (const recordToUpdate of recordsToUpdate) {
+                recordToUpdate.scrapedUsingCheerio = true;
+                await recordToUpdate.save();
+            }
+
+
         }
     }
     //if website exist but has no data
@@ -74,7 +85,7 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
             console.log('-----------------------------------')
-            console.log(websiteUrl + '  id found using href', licenseId)
+            console.log(websiteUrl + '  id found using meta tag', licenseId)
             console.log('-----------------------------------')
 
         }
