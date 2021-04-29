@@ -12,13 +12,11 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
     let websiteUrlHttps = websiteUrl.replace('http', 'https')
 
     //check websites availibilty
-    console.log('checking ', websiteUrl)
     let websiteHttpAvailable = await urlExists(websiteUrl);
     let websiteHttpsAvailable = await urlExists(websiteUrlHttps);
-    console.log(websiteUrl, websiteHttpAvailable)
-    console.log(websiteUrlHttps, websiteHttpsAvailable)
+    // console.log(websiteUrl, websiteHttpAvailable)
+    // console.log(websiteUrlHttps, websiteHttpsAvailable)
     if (!websiteHttpsAvailable && !websiteHttpAvailable) {
-        console.log(websiteUrl, 'Not Available ')
         let recordsToUpdate = await WebsiteRecord.find({
             url: websiteUrl,
         });
@@ -29,8 +27,10 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             recordToUpdate.scrapedUsingCheerio = true;
             await recordToUpdate.save();
         }
+        console.log('-----------')
+        console.log('Unreachable ', websiteUrl)
+        console.log('-----------')
 
-        console.log(websiteUrl, 'Not Available')
         return;
     }
     //instanciate axios 
@@ -42,15 +42,15 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
 
 
     try {
-        console.log('trying http :', websiteUrl)
+        // console.log('trying http :', websiteUrl)
         res = await instance.get(websiteUrl)
     } catch (error1) {
-        console.log('trying http FAILED :', websiteUrl)
+        // console.log('trying http FAILED :', websiteUrl)
         try {
-            console.log('trying https : ', websiteUrlHttps)
+            // console.log('trying https : ', websiteUrlHttps)
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
-            console.log('trying https FAILED : ', websiteUrlHttps)
+            // console.log('trying https FAILED : ', websiteUrlHttps)
 
             let recordsToUpdate = await WebsiteRecord.find({
                 url: websiteUrl,
@@ -60,13 +60,16 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
                 recordToUpdate.scrapedUsingCheerio = true;
                 await recordToUpdate.save();
             }
+            console.log('-----------')
+            console.log('Cannot get : ', websiteUrl)
+            console.log('-----------')
+
             return;
 
         }
     }
     //if website exist but has no data
     if (!res || (res && !res.data)) {
-        console.log(websiteUrl + '  RESPONSE HAS NO DATA');
         let recordsToUpdate = await WebsiteRecord.find({
             url: websiteUrl,
         });
@@ -74,6 +77,10 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             recordToUpdate.scrapedUsingCheerio = true;
             await recordToUpdate.save();
         }
+        console.log('-----------')
+        console.log('No response : ', websiteUrl)
+        console.log('-----------')
+
         return;
     }
 
@@ -88,12 +95,11 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         let regex = /(\s*)<meta name="livechat_id"(\s*)content="[0-9]+"/;
         let matched = regex.exec(html);
         if (matched) {
-            console.log(matched)
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log('-----------------------------------')
-            console.log(websiteUrl + '  id found using meta tag', licenseId)
-            console.log('-----------------------------------')
+            // console.log('-----------------------------------')
+            // console.log(websiteUrl + '  id found using meta tag', licenseId)
+            // console.log('-----------------------------------')
 
         }
     }
@@ -105,9 +111,9 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log('-----------------------------------')
-            console.log(websiteUrl + '   id found in link', licenseId)
-            console.log('-----------------------------------')
+            // console.log('-----------------------------------')
+            // console.log(websiteUrl + '   id found in link', licenseId)
+            // console.log('-----------------------------------')
 
         }
     }
@@ -119,9 +125,9 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            console.log('-----------------------------------')
-            console.log(websiteUrl + '   id found using _lc.license', licenseId)
-            console.log('-----------------------------------')
+            // console.log('-----------------------------------')
+            // console.log(websiteUrl + '   id found using _lc.license', licenseId)
+            // console.log('-----------------------------------')
 
         }
     }
@@ -142,9 +148,9 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
                 if (externalJsMatched) {
                     externalJsMatched = externalJsMatched[0]
                     licenseId = externalJsMatched.replace(/\D/g, "")
-                    console.log('-----------------------------------')
-                    console.log(websiteUrl + ' id found using external js ', licenseId)
-                    console.log('-----------------------------------')
+                        // console.log('-----------------------------------')
+                        // console.log(websiteUrl + ' id found using external js ', licenseId)
+                        // console.log('-----------------------------------')
 
                 }
             } catch (error) {
@@ -161,7 +167,6 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         url: websiteUrl,
     });
     if (licenseId) {
-        console.log(websiteUrl + 'Saved');
 
         for (const recordToUpdate of recordsToUpdate) {
             recordToUpdate.licenseId = licenseId;
@@ -169,12 +174,20 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
             recordToUpdate.scrapedUsingCheerio = true;
             await recordToUpdate.save();
         }
+
+        console.log('-------------')
+        console.log('Found & Saved : ' + websiteUrl)
+        console.log('-------------')
+        process.env['NUMBER_OF_SCRAPED_IDS'] = parseInt(process.env['NUMBER_OF_SCRAPED_IDS']) + 1
+        console.log('Found : ', process.env.NUMBER_OF_SCRAPED_IDS)
     } else {
-        console.log(websiteUrl + '   Not found');
         for (const recordToUpdate of recordsToUpdate) {
             recordToUpdate.scrapedUsingCheerio = true;
             await recordToUpdate.save();
         }
+        console.log('-------------')
+        console.log('  Not Found  ', websiteUrl)
+        console.log('-------------')
     }
 
 

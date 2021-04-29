@@ -7,6 +7,8 @@ require('dotenv').config()
 
 connectToMongoDb().then(() => {
     scrapUrlscheerio();
+    process.env['NUMBER_OF_SCRAPED_IDS'] = 0
+
     WebsiteRecord.countDocuments({ status: 'done' }).then((result) => {
         console.log('done : ' + result)
     });
