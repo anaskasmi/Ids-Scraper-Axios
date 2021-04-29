@@ -7,7 +7,7 @@ q.timeout = 100 * 1000;
 exports.scrapUrlscheerio = async() => {
     //get websites from db
     console.log('getting 100 records...')
-    let websiteRecords = await WebsiteRecord.find({ status: 'notDone', scrapedUsingCheerio: { $ne: true } }).sort({ _id: 1 }).limit(100);
+    let websiteRecords = await WebsiteRecord.find({ status: 'notDone', scrapedUsingCheerio: { $ne: true } }).limit(100);
     if (websiteRecords.length == 0) {
         console.log('No records found with status notDone');
     } else {

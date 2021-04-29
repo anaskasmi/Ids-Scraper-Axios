@@ -60,13 +60,20 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
                 recordToUpdate.scrapedUsingCheerio = true;
                 await recordToUpdate.save();
             }
-
+            return;
 
         }
     }
     //if website exist but has no data
     if (!res || (res && !res.data)) {
-        console.log(websiteUrl + '  RESPONSE HAS NO DATA')
+        console.log(websiteUrl + '  RESPONSE HAS NO DATA');
+        let recordsToUpdate = await WebsiteRecord.find({
+            url: websiteUrl,
+        });
+        for (const recordToUpdate of recordsToUpdate) {
+            recordToUpdate.scrapedUsingCheerio = true;
+            await recordToUpdate.save();
+        }
         return;
     }
 
@@ -154,21 +161,19 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         url: websiteUrl,
     });
     if (licenseId) {
+        console.log(websiteUrl + 'Saved');
+
         for (const recordToUpdate of recordsToUpdate) {
-            if (recordToUpdate) {
-                recordToUpdate.licenseId = licenseId;
-                recordToUpdate.status = 'done';
-                recordToUpdate.scrapedUsingCheerio = true;
-                await recordToUpdate.save();
-            }
+            recordToUpdate.licenseId = licenseId;
+            recordToUpdate.status = 'done';
+            recordToUpdate.scrapedUsingCheerio = true;
+            await recordToUpdate.save();
         }
     } else {
         console.log(websiteUrl + '   Not found');
         for (const recordToUpdate of recordsToUpdate) {
-            if (recordToUpdate) {
-                recordToUpdate.scrapedUsingCheerio = true;
-                await recordToUpdate.save();
-            }
+            recordToUpdate.scrapedUsingCheerio = true;
+            await recordToUpdate.save();
         }
     }
 

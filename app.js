@@ -7,19 +7,23 @@ require('dotenv').config()
 
 connectToMongoDb().then(() => {
     scrapUrlscheerio();
-    // WebsiteRecord.find({ status: 'done' }).countDocuments().then((result) => {
-    //     console.log('done : ' + result)
+    WebsiteRecord.countDocuments({ status: 'done' }).then((result) => {
+        console.log('done : ' + result)
+    });
+    WebsiteRecord.countDocuments({ status: 'failed' }).then((result) => {
+        console.log('failed : ' + result)
+    });
+    WebsiteRecord.countDocuments({ status: 'failed', cause: 'unreachable' }).then((result) => {
+        console.log('unreachable : ' + result)
+    });
+
+    WebsiteRecord.countDocuments({ scrapedUsingCheerio: true }).then((result) => {
+        console.log('cheerio : ' + result)
+    });
+    // WebsiteRecord.countDocuments({ status: 'notDone' }).then((result) => {
+    //     console.log('notDone : ' + result)
     // });
-    // WebsiteRecord.find({ status: 'failed' }).countDocuments().then((result) => {
-    //     console.log('failed : ' + result)
-    // });
-    // WebsiteRecord.find({ status: 'failed', cause: 'unreachable' }).countDocuments().then((result) => {
-    //     console.log('unreachable : ' + result)
-    // });
-    // // WebsiteRecord.find({ status: 'notDone' }).countDocuments().then((result) => {
-    // //     console.log('notDone : ' + result)
-    // // });
-    // WebsiteRecord.find({ status: 'under-processing' }).countDocuments().then((result) => {
-    //     console.log('under-processing : ' + result)
-    // });
+    WebsiteRecord.countDocuments({ status: 'under-processing' }).then((result) => {
+        console.log('under-processing : ' + result)
+    });
 })
