@@ -6,6 +6,8 @@ const urlExists = util.promisify(require('url-exists'));
 
 
 exports.scrapOneRecordCheerio = async function(websiteUrl) {
+    process.env.NUMBER_OF_VISITED_WEBSITES = parseInt(process.env.NUMBER_OF_VISITED_WEBSITES) + 1
+    console.log('Visited : ', process.env.NUMBER_OF_VISITED_WEBSITES, websiteUrl);
 
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     let res = null;
