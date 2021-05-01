@@ -7,6 +7,8 @@ require('dotenv').config()
 
 connectToMongoDb().then(() => {
     scrapUrlscheerio();
+    process.env['CALLES_NUMBER'] = 0
+
     process.env['NUMBER_OF_SCRAPED_IDS'] = 0
     process.env['NUMBER_OF_VISITED_WEBSITES'] = 0
 
@@ -32,4 +34,5 @@ connectToMongoDb().then(() => {
     WebsiteRecord.countDocuments({ status: 'under-processing' }).then((result) => {
         console.log('under-processing : ' + result)
     });
+
 })
