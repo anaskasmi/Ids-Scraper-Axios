@@ -4,11 +4,11 @@ const https = require('https')
 const util = require('util');
 const urlExists = util.promisify(require('url-exists'));
 
+const fs = require('fs');
 
-exports.scrapOneRecordCheerio = async function(websiteUrl) {
-    process.env.NUMBER_OF_VISITED_WEBSITES = parseInt(process.env.NUMBER_OF_VISITED_WEBSITES) + 1
-    console.log('Visited : ', process.env.NUMBER_OF_VISITED_WEBSITES, websiteUrl);
 
+exports.savePotentialwebites = async function(websiteUrl) {
+    let isPotential = false;
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     let res = null;
     let websiteUrlHttps = websiteUrl.replace('http', 'https')
@@ -16,19 +16,11 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
     //check websites availibilty
     let websiteHttpAvailable = await urlExists(websiteUrl);
     let websiteHttpsAvailable = await urlExists(websiteUrlHttps);
-    // console.log(websiteUrl, websiteHttpAvailable)
-    // console.log(websiteUrlHttps, websiteHttpsAvailable)
     if (!websiteHttpsAvailable && !websiteHttpAvailable) {
         let recordsToUpdate = await WebsiteRecord.find({
             url: websiteUrl,
         });
 
-        for (const recordToUpdate of recordsToUpdate) {
-            recordToUpdate.status = "failed";
-            recordToUpdate.cause = "unreachable";
-            recordToUpdate.scrapedUsingCheerio = true;
-            await recordToUpdate.save();
-        }
         console.log('-----------')
         console.log('Unreachable ', websiteUrl)
         console.log('-----------')
@@ -44,45 +36,23 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
 
 
     try {
-        // console.log('trying http :', websiteUrl)
         res = await instance.get(websiteUrl)
     } catch (error1) {
-        // console.log('trying http FAILED :', websiteUrl)
         try {
-            // console.log('trying https : ', websiteUrlHttps)
             res = await instance.get(websiteUrlHttps)
         } catch (error2) {
-            // console.log('trying https FAILED : ', websiteUrlHttps)
-
-            let recordsToUpdate = await WebsiteRecord.find({
-                url: websiteUrl,
-            });
-
-            for (const recordToUpdate of recordsToUpdate) {
-                recordToUpdate.scrapedUsingCheerio = true;
-                await recordToUpdate.save();
-            }
             console.log('-----------')
             console.log('Cannot get : ', websiteUrl)
             console.log('-----------')
-
             return;
-
         }
     }
+
     //if website exist but has no data
     if (!res || (res && !res.data)) {
-        let recordsToUpdate = await WebsiteRecord.find({
-            url: websiteUrl,
-        });
-        for (const recordToUpdate of recordsToUpdate) {
-            recordToUpdate.scrapedUsingCheerio = true;
-            await recordToUpdate.save();
-        }
         console.log('-----------')
         console.log('No response : ', websiteUrl)
         console.log('-----------')
-
         return;
     }
 
@@ -99,10 +69,6 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            // console.log('-----------------------------------')
-            // console.log(websiteUrl + '  id found using meta tag', licenseId)
-            // console.log('-----------------------------------')
-
         }
     }
 
@@ -113,10 +79,6 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            // console.log('-----------------------------------')
-            // console.log(websiteUrl + '   id found in link', licenseId)
-            // console.log('-----------------------------------')
-
         }
     }
 
@@ -127,41 +89,10 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         if (matched) {
             matched = matched[0]
             licenseId = matched.replace(/\D/g, "");
-            // console.log('-----------------------------------')
-            // console.log(websiteUrl + '   id found using _lc.license', licenseId)
-            // console.log('-----------------------------------')
-
         }
     }
 
-    //external js 
-    if (!licenseId) {
-        let regex = /src="https:\/\/connect\.livechatinc\.com\/api([^"]+)"/;
-        let src = regex.exec(html);
-        if (src) {
-            src = src[0]
-            src = src.replace(`src="`, "");
-            src = src.replace(`"`, "");
-            try {
-                externelJs = await instance.get(src)
-                externelJs = externelJs.data;
-                let externalJsRegex = /_lc.license(\s*)=(\s*)[0-9]*[,;]/;
-                let externalJsMatched = externalJsRegex.exec(externelJs);
-                if (externalJsMatched) {
-                    externalJsMatched = externalJsMatched[0]
-                    licenseId = externalJsMatched.replace(/\D/g, "")
-                        // console.log('-----------------------------------')
-                        // console.log(websiteUrl + ' id found using external js ', licenseId)
-                        // console.log('-----------------------------------')
 
-                }
-            } catch (error) {
-
-                console.log(error, websiteUrl)
-            }
-
-        }
-    }
 
     // var 
     if (!licenseId) {
@@ -190,29 +121,90 @@ exports.scrapOneRecordCheerio = async function(websiteUrl) {
         }
     }
 
+    // chat with us link 2 
+    if (!licenseId) {
+        let regex = /livechat\.com\/chat-with\/([0-9]+)/;
+        let matched = regex.exec(html);
+        if (matched) {
+            matched = matched[0]
+            licenseId = matched.replace(/\D/g, "");
+            console.log('-----------------------------------')
+            console.log(websiteUrl + '   id found using chat with us link 2', licenseId)
+            console.log('-----------------------------------')
 
-    let recordsToUpdate = await WebsiteRecord.find({
-        url: websiteUrl,
-    });
+        }
+    }
+
+
+    //external js 
+    if (!licenseId) {
+        let regex = /src="https:\/\/connect\.livechatinc\.com\/api([^"]+)"/;
+        let src = regex.exec(html);
+        if (src) {
+            src = src[0]
+            src = src.replace(`src="`, "");
+            src = src.replace(`"`, "");
+            try {
+                externelJs = await instance.get(src)
+                externelJs = externelJs.data;
+                let externalJsRegex = /_lc.license(\s*)=(\s*)[0-9]*[,;]/;
+                let externalJsMatched = externalJsRegex.exec(externelJs);
+                if (externalJsMatched) {
+                    externalJsMatched = externalJsMatched[0]
+                    licenseId = externalJsMatched.replace(/\D/g, "")
+                }
+            } catch (error) {
+                //potential
+                fs.appendFileSync('potential.csv', `${websiteUrl},externalJsFile\n`);
+                isPotential = true;
+                console.log(error, websiteUrl)
+            }
+
+        }
+    }
+
+
+    // save link to potential list 
+    if (!licenseId) {
+        if (html.includes('livechat')) {
+            fs.appendFileSync('potential.csv', `${websiteUrl},livechatKeywork\n`);
+            isPotential = true;
+        } else if (html.includes('license')) {
+            fs.appendFileSync('potential.csv', `${websiteUrl},license\n`);
+            isPotential = true;
+        }
+
+        if (isPotential) {
+            let recordsToUpdate = await WebsiteRecord.find({
+                url: websiteUrl,
+            });
+            for (const recordToUpdate of recordsToUpdate) {
+                recordToUpdate.isPotential = true;
+                recordToUpdate.isPotentialScanned = true;
+                await recordToUpdate.save();
+            }
+            console.log('-------------')
+            console.log('  Potential  ', websiteUrl)
+            console.log('-------------')
+
+        }
+    }
+
+
     if (licenseId) {
-
+        let recordsToUpdate = await WebsiteRecord.find({
+            url: websiteUrl,
+        });
         for (const recordToUpdate of recordsToUpdate) {
             recordToUpdate.licenseId = licenseId;
             recordToUpdate.status = 'done';
-            recordToUpdate.scrapedUsingCheerio = true;
             await recordToUpdate.save();
         }
-
         console.log('-------------')
-        console.log('Found & Saved : ' + websiteUrl)
+        console.log('Found & Saved : ' + process.env.NUMBER_OF_SCRAPED_IDS, ' : ' + websiteUrl)
         console.log('-------------')
         process.env['NUMBER_OF_SCRAPED_IDS'] = parseInt(process.env['NUMBER_OF_SCRAPED_IDS']) + 1
-        console.log('Found : ', process.env.NUMBER_OF_SCRAPED_IDS)
     } else {
-        for (const recordToUpdate of recordsToUpdate) {
-            recordToUpdate.scrapedUsingCheerio = true;
-            await recordToUpdate.save();
-        }
         console.log('-------------')
         console.log('  Not Found  ', websiteUrl)
         console.log('-------------')
