@@ -198,6 +198,7 @@ exports.savePotentialwebites = async function(websiteUrl) {
         for (const recordToUpdate of recordsToUpdate) {
             recordToUpdate.licenseId = licenseId;
             recordToUpdate.status = 'done';
+            recordToUpdate.isPotentialScanned = true;
             await recordToUpdate.save();
         }
         console.log('-------------')

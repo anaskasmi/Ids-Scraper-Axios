@@ -15,11 +15,11 @@ exports.scrapUrlscheerio = async() => {
         }
         //get websites from db
         console.log('getting 100 records...')
-        let randomNumber = Math.floor(Math.random() * 10);
+        let randomNumber = Math.floor(Math.random() * 500);
         let websiteRecords = await WebsiteRecord
             .find({ status: 'failed', isPotentialScanned: { $ne: true } })
             .limit(100)
-            // .skip(randomNumber);
+            .skip(randomNumber);
         if (websiteRecords.length == 0) {
             console.log('No records found with status notDone');
             break;
