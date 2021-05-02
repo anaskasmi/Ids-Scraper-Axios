@@ -17,9 +17,6 @@ exports.savePotentialwebites = async function(websiteUrl) {
     let websiteHttpAvailable = await urlExists(websiteUrl);
     let websiteHttpsAvailable = await urlExists(websiteUrlHttps);
     if (!websiteHttpsAvailable && !websiteHttpAvailable) {
-        let recordsToUpdate = await WebsiteRecord.find({
-            url: websiteUrl,
-        });
 
         console.log('-----------')
         console.log('Unreachable ', websiteUrl)
