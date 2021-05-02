@@ -24,7 +24,13 @@ exports.savePotentialwebites = async function(websiteUrl) {
         console.log('-----------')
         console.log('Unreachable ', websiteUrl)
         console.log('-----------')
-
+        let recordsToUpdate = await WebsiteRecord.find({
+            url: websiteUrl,
+        });
+        for (const recordToUpdate of recordsToUpdate) {
+            recordToUpdate.isPotentialScanned = true;
+            await recordToUpdate.save();
+        }
         return;
     }
     //instanciate axios 
@@ -44,6 +50,13 @@ exports.savePotentialwebites = async function(websiteUrl) {
             console.log('-----------')
             console.log('Cannot get : ', websiteUrl)
             console.log('-----------')
+            let recordsToUpdate = await WebsiteRecord.find({
+                url: websiteUrl,
+            });
+            for (const recordToUpdate of recordsToUpdate) {
+                recordToUpdate.isPotentialScanned = true;
+                await recordToUpdate.save();
+            }
             return;
         }
     }
@@ -53,6 +66,13 @@ exports.savePotentialwebites = async function(websiteUrl) {
         console.log('-----------')
         console.log('No response : ', websiteUrl)
         console.log('-----------')
+        let recordsToUpdate = await WebsiteRecord.find({
+            url: websiteUrl,
+        });
+        for (const recordToUpdate of recordsToUpdate) {
+            recordToUpdate.isPotentialScanned = true;
+            await recordToUpdate.save();
+        }
         return;
     }
 
